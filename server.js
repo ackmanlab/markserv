@@ -12,7 +12,8 @@ const markdownExtensions = [
   '.mdwn',
   '.mdtxt',
   '.mdtext',
-  '.text'
+  '.text',
+  '.txt'
 ];
 
 const watchExtensions = markdownExtensions.concat([
@@ -52,6 +53,7 @@ const marked = require('markdown-it')({
 .use(require('markdown-it-deflist'))
 .use(require('markdown-it-mathjax')());
 
+//   marked = new MarkdownIt();
 const less = require('less');
 const send = require('send');
 const jsdom = require('jsdom');
@@ -110,8 +112,8 @@ const errormsg = type => cursor
   .write(' ');
 
 // hasMarkdownExtension: check whether a file is Markdown type
-const hasMarkdownExtension = path => {
-  const fileExtension = path.substr(path.length - 3).toLowerCase();
+const hasMarkdownExtension = fileName => {
+  const fileExtension = path.extname(fileName).toLowerCase();
   let extensionMatch = false;
 
   markdownExtensions.forEach(extension => {
@@ -124,8 +126,8 @@ const hasMarkdownExtension = path => {
 };
 
 // getFile: reads utf8 content from a file
-const getFile = path => new Promise((resolve, reject) => {
-  fs.readFile(path, 'utf8', (err, data) => {
+const getFile = fileName => new Promise((resolve, reject) => {
+  fs.readFile(fileName, 'utf8', (err, data) => {
     if (err) {
       return reject(err);
     }
@@ -149,7 +151,7 @@ const markdownToHTML = markdownText => new Promise(resolve => {
 });
 
 // linkify: converts github style wiki markdown links to .md links
-const linkify = body => new Promise((resolve, reject) => {
+const linkify = body => new Promise((resolve, reject) => {  
   jsdom.env(body, (err, window) => {
     if (err) {
       return reject(err);
@@ -294,7 +296,7 @@ MathJax.Hub.Config({
 });
 
 // markItDown: begins the Markdown compilation process, then sends result when done...
-const compileAndSendMarkdown = (path, res) => buildHTMLFromMarkDown(path)
+const compileAndSendMarkdown = (fileName, res) => buildHTMLFromMarkDown(fileName)
   .then(html => {
     res.writeHead(200);
     res.end(html);
@@ -306,12 +308,12 @@ const compileAndSendMarkdown = (path, res) => buildHTMLFromMarkDown(path)
     .reset().write('\n');
   });
 
-const compileAndSendDirectoryListing = (path, res) => {
-  const urls = fs.readdirSync(path);
+const compileAndSendDirectoryListing = (fileName, res) => {
+  const urls = fs.readdirSync(fileName);
   let list = '<ul>\n';
 
   urls.forEach(subPath => {
-    const dir = fs.statSync(path + subPath).isDirectory();
+    const dir = fs.statSync(fileName + subPath).isDirectory();
     let href;
     if (dir) {
       href = subPath + '/';
@@ -332,7 +334,7 @@ const compileAndSendDirectoryListing = (path, res) => {
     const html = `
       <!DOCTYPE html>
         <head>
-          <title>${path.slice(2)}</title>
+          <title>${fileName.slice(2)}</title>
           <meta charset="utf-8">
           <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
           <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
@@ -343,7 +345,7 @@ const compileAndSendDirectoryListing = (path, res) => {
         </head>
         <body>
           <article class="markdown-body">
-            <h1>Index of ${path.slice(2)}</h1>${list}
+            <h1>Index of ${fileName.slice(2)}</h1>${list}
             <sup><hr> Served by <a href="https://www.npmjs.com/package/markserv">MarkServ</a> | PID: ${process.pid}</sup>
           </article>
         </body>
@@ -352,7 +354,7 @@ const compileAndSendDirectoryListing = (path, res) => {
     // Log if verbose
 
     if (flags.verbose) {
-      msg('index').write(path).reset().write('\n');
+      msg('index').write(fileName).reset().write('\n');
     }
 
     // Send file
@@ -377,22 +379,22 @@ const httpRequestHandler = (req, res) => {
      .reset().write('\n');
   }
 
-  const path = unescape(dir) + unescape(originalUrl);
+  const fileName = unescape(dir) + unescape(originalUrl);
 
   let stat;
   let isDir;
   let isMarkdown;
 
   try {
-    stat = fs.statSync(path);
+    stat = fs.statSync(fileName);
     isDir = stat.isDirectory();
     isMarkdown = false;
     if (!isDir) {
-      isMarkdown = hasMarkdownExtension(path);
+      isMarkdown = hasMarkdownExtension(fileName);
     }
   } catch (err) {
     res.writeHead(200, {'Content-Type': 'text/html'});
-    errormsg('404').write(path.slice(2)).reset().write('\n');
+    errormsg('404').write(fileName.slice(2)).reset().write('\n');
     res.write('404 :\'(');
     res.end();
     return;
@@ -400,16 +402,16 @@ const httpRequestHandler = (req, res) => {
 
   // Markdown: Browser is requesting a Markdown file
   if (isMarkdown) {
-    msg('markdown').write(path.slice(2)).reset().write('\n');
-    compileAndSendMarkdown(path, res);
+    msg('markdown').write(fileName.slice(2)).reset().write('\n');
+    compileAndSendMarkdown(fileName, res);
   } else if (isDir) {
     // Index: Browser is requesting a Directory Index
-    msg('dir').write(path.slice(2)).reset().write('\n');
-    compileAndSendDirectoryListing(path, res);
+    msg('dir').write(fileName.slice(2)).reset().write('\n');
+    compileAndSendDirectoryListing(fileName, res);
   } else {
     // Other: Browser requests other MIME typed file (handled by 'send')
-    msg('file').write(path.slice(2)).reset().write('\n');
-    send(req, path, {root: dir}).pipe(res);
+    msg('file').write(fileName.slice(2)).reset().write('\n');
+    send(req, fileName, {root: dir}).pipe(res);
   }
 };
 
