@@ -1,6 +1,6 @@
 {
   "name": "markserv",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "markserv serves Markdown files as GitHub style HTML and LiveReloads your files in the browser as you edit.",
   "keywords": [
     "markdown",
@@ -19,7 +19,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "http://github.com/f1lt3r/markserv-legacy.git"
+    "url": "https://github.com/ackmanlab/markserv.git"
   },
   "dependencies": {
     "ansi": "^0.3.0",
@@ -31,7 +31,12 @@
     "less": "^2.4.0",
     "livereload": "^0.3.6",
     "livereload-js": "^2.2.2",
-    "marked": "git://github.com/f1lt3r/marked#master",
+    "markdown-it": "^8.3.1",
+    "markdown-it-deflist": "^@2.0.1",
+    "markdown-it-footnote": "^@3.0.1",
+    "markdown-it-mathjax": "^@2.0.0",
+    "markdown-it-sub": "^@1.0.0",
+    "markdown-it-sup": "^@1.0.0",
     "mime": "^1.2.11",
     "open": "0.0.5",
     "openport": "0.0.4",

@@ -40,7 +40,18 @@ const fs = require('fs');
 const open = require('open');
 const Promise = require('bluebird');
 const connect = require('connect');
-const marked = require('marked');
+
+const marked = require('markdown-it')({ 
+  html: true,
+  linkify: true,
+  typographer: false
+})
+.use(require('markdown-it-sub'))
+.use(require('markdown-it-sup'))
+.use(require('markdown-it-footnote'))
+.use(require('markdown-it-deflist'))
+.use(require('markdown-it-mathjax')());
+
 const less = require('less');
 const send = require('send');
 const jsdom = require('jsdom');
@@ -133,13 +144,8 @@ const buildStyleSheet = cssPath =>
   );
 
 // markdownToHTML: turns a Markdown file into HTML content
-const markdownToHTML = markdownText => new Promise((resolve, reject) => {
-  marked(markdownText, (err, data) => {
-    if (err) {
-      return reject(err);
-    }
-    resolve(data);
-  });
+const markdownToHTML = markdownText => new Promise(resolve => {
+  resolve(marked.render(markdownText)); 
 });
 
 // linkify: converts github style wiki markdown links to .md links
