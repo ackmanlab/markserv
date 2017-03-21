@@ -47,6 +47,9 @@ const marked = require('markdown-it')({
   linkify: true,
   typographer: false
 })
+.use(require('markdown-it-front-matter'), function(fm) {
+  console.log(fm)
+})
 .use(require('markdown-it-sub'))
 .use(require('markdown-it-sup'))
 .use(require('markdown-it-footnote'))
