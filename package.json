@@ -33,7 +33,7 @@
     "livereload-js": "^2.2.2",
     "markdown-it": "^8.3.1",
     "markdown-it-deflist": "^@2.0.1",
-    "markdown-it-footnote": "^@3.0.1",
+    "markdown-it-footnote": "https://github.com/ackmanlab/markdown-it-footnote.git",
     "markdown-it-front-matter": "^0.1.2",
     "markdown-it-mathjax": "^@2.0.0",
     "markdown-it-sub": "^@1.0.0",
