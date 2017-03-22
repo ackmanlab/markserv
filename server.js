@@ -248,7 +248,7 @@ const buildHTMLFromMarkDown = markdownPath => new Promise(resolve => {
             <style>${css}</style>
             <link rel="stylesheet" href="//sindresorhus.com/github-markdown-css/github-markdown.css">
             <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
-            <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.10.0/highlight.min.js"></script>
             <link rel="stylesheet" href="https://highlightjs.org/static/demo/styles/github-gist.css">
             <script type="text/x-mathjax-config">
 MathJax.Hub.Config({
@@ -268,11 +268,11 @@ MathJax.Hub.Config({
       outputHtml = `
         <!DOCTYPE html>
           <head>
+            <meta charset="utf-8">
             <title>${title}</title>
             <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
-            <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.10.0/highlight.min.js"></script>
             <link rel="stylesheet" href="https://highlightjs.org/static/demo/styles/github-gist.css">
-            <meta charset="utf-8">
             <style>${css}</style>
             <script type="text/x-mathjax-config">
 MathJax.Hub.Config({
@@ -340,8 +340,7 @@ const compileAndSendDirectoryListing = (fileName, res) => {
           <title>${fileName.slice(2)}</title>
           <meta charset="utf-8">
           <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
-          <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
-          <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/styles/default.min.css">
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.10.0/highlight.min.js"></script>
           <link rel="stylesheet" href="//highlightjs.org/static/demo/styles/github-gist.css">
           <link rel="shortcut icon" type="image/x-icon" href="https://cdn0.iconfinder.com/data/icons/octicons/1024/markdown-128.png" />
           <style>${css}</style>
