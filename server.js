@@ -70,6 +70,12 @@ const cursor = ansi(process.stdout);
 
 const pkg = require('./package.json');
 
+var pdf = require('html-pdf');
+var options = JSON.parse(fs.readFileSync('./config.json'));
+options.base = 'file://' + process.cwd() + '/';
+
+console.log(options)
+
 // Path Variables
 const GitHubStyle = path.join(__dirname, 'less/github.less');
 
@@ -299,6 +305,25 @@ MathJax.Hub.Config({
 });
 
 // markItDown: begins the Markdown compilation process, then sends result when done...
+const printPDF = (fileName, res, query) => buildHTMLFromMarkDown(fileName)
+  .then(html => {
+    res.writeHead(200);
+    res.end(html)
+
+    console.log('Rendering pdf now...')    
+    var outFile = path.parse(fileName).name;
+    pdf.create(html, options).toFile(outFile + '.pdf', function(err, res) {
+      if (err) return console.log(err);
+      console.log(res);
+    });
+  // Catch if something breaks...
+  }).catch(err => {
+    msg('error')
+    .write('Can\'t build HTML: ', err)
+    .reset().write('\n');
+  });
+
+// markItDown: begins the Markdown compilation process, then sends result when done...
 const compileAndSendMarkdown = (fileName, res) => buildHTMLFromMarkDown(fileName)
   .then(html => {
     res.writeHead(200);
@@ -371,17 +396,23 @@ const getPathFromUrl = url => {
   return url.split(/[?#]/)[0];
 };
 
+// Get URL params from file being fetched
+const getQueryFromUrl = url => {
+  return url.split(/[?]/)[1];
+};
+
 // http_request_handler: handles all the browser requests
 const httpRequestHandler = (req, res) => {
   const originalUrl = getPathFromUrl(req.originalUrl);
+  const query = getQueryFromUrl(req.originalUrl);
 
   if (flags.verbose) {
     msg('request')
-     .write(unescape(dir) + unescape(originalUrl))
+     .write(decodeURI(dir) + decodeURI(originalUrl))
      .reset().write('\n');
   }
 
-  const fileName = unescape(dir) + unescape(originalUrl);
+  const fileName = decodeURI(dir) + decodeURI(originalUrl);
 
   let stat;
   let isDir;
@@ -403,7 +434,9 @@ const httpRequestHandler = (req, res) => {
   }
 
   // Markdown: Browser is requesting a Markdown file
-  if (isMarkdown) {
+  if (query === 'pdf') {
+    printPDF(fileName, res, query);
+  } else if (isMarkdown) {
     msg('markdown').write(fileName.slice(2)).reset().write('\n');
     compileAndSendMarkdown(fileName, res);
   } else if (isDir) {
