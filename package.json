@@ -28,6 +28,7 @@
     "connect": "^3.6.0",
     "connect-livereload": "^0.6.0",
     "html-pdf": "^2.1.0",
+    "js-yaml": "^3.8.2",
     "jsdom": "^9.12.0",
     "less": "^2.7.2",
     "livereload": "^0.6.2",

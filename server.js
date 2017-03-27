@@ -42,13 +42,15 @@ const open = require('open');
 const Promise = require('bluebird');
 const connect = require('connect');
 
-const marked = require('markdown-it')({ 
+var frontMatter = '';
+
+const md = require('markdown-it')({ 
   html: true,
   linkify: true,
   typographer: false
 })
 .use(require('markdown-it-front-matter'), function(fm) {
-  console.log(fm)
+  frontMatter = fm;
 })
 .use(require('markdown-it-sub'))
 .use(require('markdown-it-sup'))
@@ -56,7 +58,6 @@ const marked = require('markdown-it')({
 .use(require('markdown-it-deflist'))
 .use(require('markdown-it-mathjax')());
 
-//   marked = new MarkdownIt();
 const less = require('less');
 const send = require('send');
 const jsdom = require('jsdom');
@@ -73,8 +74,15 @@ const pkg = require('./package.json');
 var pdf = require('html-pdf');
 var options = JSON.parse(fs.readFileSync('./config.json'));
 options.base = 'file://' + process.cwd() + '/';
+const yaml = require('js-yaml');
 
 console.log(options)
+
+// const printMetadata = frontMatter => {
+//   console.log(frontMatter);
+// };
+
+
 
 // Path Variables
 const GitHubStyle = path.join(__dirname, 'less/github.less');
@@ -96,8 +104,71 @@ flags.version(pkg.version)
 const dir = flags.dir;
 const cssPath = flags.less;
 
-// Terminal Output Messages
+// const makeHeaders = frontMatter ==> {
 
+//     if (flags.less === GitHubStyle) {
+//       outputHtml = `
+//         <!DOCTYPE html>
+//           <head>
+//             <title>${title}</title>
+//             <meta charset="utf-8">
+//             <style>${css}</style>
+//             <link rel="stylesheet" href="//sindresorhus.com/github-markdown-css/github-markdown.css">
+//             <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+//             <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.10.0/highlight.min.js"></script>
+//             <link rel="stylesheet" href="https://highlightjs.org/static/demo/styles/github-gist.css">
+//             <script type="text/x-mathjax-config">
+// MathJax.Hub.Config({
+//   tex2jax: {inlineMath: [['$','$']]}
+// });
+// </script>
+// <script type="text/javascript" async
+//   src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
+// </script>
+//           </head>
+//           <body>
+//             <article class="markdown-body">${htmlBody}</article>
+//           </body>
+//           <script src="http://localhost:35729/livereload.js?snipver=1"></script>
+//           <script>hljs.initHighlightingOnLoad();</script>`;
+//     } else {
+//       outputHtml = `
+//         <!DOCTYPE html>
+//           <head>
+//             <meta charset="utf-8">
+//             <title>${title}</title>
+//             <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+//             <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.10.0/highlight.min.js"></script>
+//             <link rel="stylesheet" href="https://highlightjs.org/static/demo/styles/github-gist.css">
+//             <style>${css}</style>
+//             <script type="text/x-mathjax-config">
+// MathJax.Hub.Config({
+//   tex2jax: {inlineMath: [['$','$']]}
+// });
+// </script>
+// <script type="text/javascript" async
+//   src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
+// </script>
+//           </head>
+//           <body>
+//             <div class="container">
+//               ${(header ? '<header>' + header + '</header>' : '')}
+//               ${(navigation ? '<nav>' + navigation + '</nav>' : '')}
+//               <article>${htmlBody}</article>
+//               ${(footer ? '<footer>' + footer + '</footer>' : '')}
+//             </div>
+//           </body>
+//           <script src="http://localhost:35729/livereload.js?snipver=1"></script>
+//           <script>hljs.initHighlightingOnLoad();</script>`;
+//     }
+// };
+
+
+
+
+
+
+// Terminal Output Messages
 const msg = type => cursor
   .bg.green()
   .fg.black()
@@ -156,7 +227,7 @@ const buildStyleSheet = cssPath =>
 
 // markdownToHTML: turns a Markdown file into HTML content
 const markdownToHTML = markdownText => new Promise(resolve => {
-  resolve(marked.render(markdownText)); 
+  resolve(md.render(markdownText));
 });
 
 // linkify: converts github style wiki markdown links to .md links
@@ -233,6 +304,8 @@ const buildHTMLFromMarkDown = markdownPath => new Promise(resolve => {
     let navigation;
     let outputHtml;
 
+    console.log(yaml.parse(frontMatter));
+
     if (flags.header) {
       header = data[2];
     }
@@ -257,13 +330,13 @@ const buildHTMLFromMarkDown = markdownPath => new Promise(resolve => {
             <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.10.0/highlight.min.js"></script>
             <link rel="stylesheet" href="https://highlightjs.org/static/demo/styles/github-gist.css">
             <script type="text/x-mathjax-config">
-MathJax.Hub.Config({
-  tex2jax: {inlineMath: [['$','$']]}
-});
-</script>
-<script type="text/javascript" async
-  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
-</script>
+            MathJax.Hub.Config({
+              tex2jax: {inlineMath: [['$','$']]}
+            });
+            </script>
+            <script type="text/javascript" async
+              src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
+            </script>
           </head>
           <body>
             <article class="markdown-body">${htmlBody}</article>
@@ -281,13 +354,13 @@ MathJax.Hub.Config({
             <link rel="stylesheet" href="https://highlightjs.org/static/demo/styles/github-gist.css">
             <style>${css}</style>
             <script type="text/x-mathjax-config">
-MathJax.Hub.Config({
-  tex2jax: {inlineMath: [['$','$']]}
-});
-</script>
-<script type="text/javascript" async
-  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
-</script>
+            MathJax.Hub.Config({
+              tex2jax: {inlineMath: [['$','$']]}
+            });
+            </script>
+            <script type="text/javascript" async
+              src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
+            </script>
           </head>
           <body>
             <div class="container">
