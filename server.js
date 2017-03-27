@@ -78,12 +78,6 @@ const yaml = require('js-yaml');
 
 console.log(options)
 
-// const printMetadata = frontMatter => {
-//   console.log(frontMatter);
-// };
-
-
-
 // Path Variables
 const GitHubStyle = path.join(__dirname, 'less/github.less');
 
@@ -103,70 +97,6 @@ flags.version(pkg.version)
 
 const dir = flags.dir;
 const cssPath = flags.less;
-
-// const makeHeaders = frontMatter ==> {
-
-//     if (flags.less === GitHubStyle) {
-//       outputHtml = `
-//         <!DOCTYPE html>
-//           <head>
-//             <title>${title}</title>
-//             <meta charset="utf-8">
-//             <style>${css}</style>
-//             <link rel="stylesheet" href="//sindresorhus.com/github-markdown-css/github-markdown.css">
-//             <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
-//             <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.10.0/highlight.min.js"></script>
-//             <link rel="stylesheet" href="https://highlightjs.org/static/demo/styles/github-gist.css">
-//             <script type="text/x-mathjax-config">
-// MathJax.Hub.Config({
-//   tex2jax: {inlineMath: [['$','$']]}
-// });
-// </script>
-// <script type="text/javascript" async
-//   src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
-// </script>
-//           </head>
-//           <body>
-//             <article class="markdown-body">${htmlBody}</article>
-//           </body>
-//           <script src="http://localhost:35729/livereload.js?snipver=1"></script>
-//           <script>hljs.initHighlightingOnLoad();</script>`;
-//     } else {
-//       outputHtml = `
-//         <!DOCTYPE html>
-//           <head>
-//             <meta charset="utf-8">
-//             <title>${title}</title>
-//             <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
-//             <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.10.0/highlight.min.js"></script>
-//             <link rel="stylesheet" href="https://highlightjs.org/static/demo/styles/github-gist.css">
-//             <style>${css}</style>
-//             <script type="text/x-mathjax-config">
-// MathJax.Hub.Config({
-//   tex2jax: {inlineMath: [['$','$']]}
-// });
-// </script>
-// <script type="text/javascript" async
-//   src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
-// </script>
-//           </head>
-//           <body>
-//             <div class="container">
-//               ${(header ? '<header>' + header + '</header>' : '')}
-//               ${(navigation ? '<nav>' + navigation + '</nav>' : '')}
-//               <article>${htmlBody}</article>
-//               ${(footer ? '<footer>' + footer + '</footer>' : '')}
-//             </div>
-//           </body>
-//           <script src="http://localhost:35729/livereload.js?snipver=1"></script>
-//           <script>hljs.initHighlightingOnLoad();</script>`;
-//     }
-// };
-
-
-
-
-
 
 // Terminal Output Messages
 const msg = type => cursor
@@ -297,14 +227,17 @@ const buildHTMLFromMarkDown = markdownPath => new Promise(resolve => {
     const css = data[0];
     const htmlBody = data[1];
     const dirs = markdownPath.split('/');
-    const title = dirs[dirs.length - 1].split('.md')[0];
+    
+    var metadata = yaml.load(frontMatter);
+    console.log(metadata);
+    if (!metadata.title) {
+      metadata.title = dirs[dirs.length - 1].split('.md')[0];
+    };
 
     let header;
     let footer;
     let navigation;
     let outputHtml;
-
-    console.log(yaml.parse(frontMatter));
 
     if (flags.header) {
       header = data[2];
@@ -318,66 +251,51 @@ const buildHTMLFromMarkDown = markdownPath => new Promise(resolve => {
       navigation = data[4];
     }
 
+//setup stylesheet block
     if (flags.less === GitHubStyle) {
-      outputHtml = `
-        <!DOCTYPE html>
-          <head>
-            <title>${title}</title>
-            <meta charset="utf-8">
-            <style>${css}</style>
-            <link rel="stylesheet" href="//sindresorhus.com/github-markdown-css/github-markdown.css">
-            <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.10.0/highlight.min.js"></script>
-            <link rel="stylesheet" href="https://highlightjs.org/static/demo/styles/github-gist.css">
-            <script type="text/x-mathjax-config">
-            MathJax.Hub.Config({
-              tex2jax: {inlineMath: [['$','$']]}
-            });
-            </script>
-            <script type="text/javascript" async
-              src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
-            </script>
-          </head>
-          <body>
-            <article class="markdown-body">${htmlBody}</article>
-          </body>
-          <script src="http://localhost:35729/livereload.js?snipver=1"></script>
-          <script>hljs.initHighlightingOnLoad();</script>`;
+      var cssBlock = `<style>
+${css}
+  </style>
+  <link rel="stylesheet" href="//sindresorhus.com/github-markdown-css/github-markdown.css">`;
     } else {
-      outputHtml = `
-        <!DOCTYPE html>
-          <head>
-            <meta charset="utf-8">
-            <title>${title}</title>
-            <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.10.0/highlight.min.js"></script>
-            <link rel="stylesheet" href="https://highlightjs.org/static/demo/styles/github-gist.css">
-            <style>${css}</style>
-            <script type="text/x-mathjax-config">
-            MathJax.Hub.Config({
-              tex2jax: {inlineMath: [['$','$']]}
-            });
-            </script>
-            <script type="text/javascript" async
-              src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
-            </script>
-          </head>
-          <body>
-            <div class="container">
-              ${(header ? '<header>' + header + '</header>' : '')}
-              ${(navigation ? '<nav>' + navigation + '</nav>' : '')}
-              <article>${htmlBody}</article>
-              ${(footer ? '<footer>' + footer + '</footer>' : '')}
-            </div>
-          </body>
-          <script src="http://localhost:35729/livereload.js?snipver=1"></script>
-          <script>hljs.initHighlightingOnLoad();</script>`;
-    }
+      var cssBlock = `<style>
+${css}
+  </style>`;
+    };
+
+//setup html and document body
+    outputHtml = `<!DOCTYPE html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${metadata.title}</title>
+  <meta name="description" content="${metadata.tags}">
+  <meta name="author" content="${metadata.author}">
+  <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.10.0/highlight.min.js"></script>
+  <link rel="stylesheet" href="https://highlightjs.org/static/demo/styles/github-gist.css">
+  ${cssBlock}
+  <script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {inlineMath: [['$','$']]}
+  });
+  </script>
+  <script type="text/javascript" async
+    src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
+  </script>
+</head>
+<body>
+  <article class="markdown-body">
+${htmlBody}
+  </article>
+</body>
+<script src="http://localhost:35729/livereload.js?snipver=1"></script>
+<script>hljs.initHighlightingOnLoad();</script>`;
     resolve(outputHtml);
   });
 });
 
-// markItDown: begins the Markdown compilation process, then sends result when done...
+// Create pdf file and save locally on server...
 const printPDF = (fileName, res, query) => buildHTMLFromMarkDown(fileName)
   .then(html => {
     res.writeHead(200);
@@ -396,7 +314,7 @@ const printPDF = (fileName, res, query) => buildHTMLFromMarkDown(fileName)
     .reset().write('\n');
   });
 
-// markItDown: begins the Markdown compilation process, then sends result when done...
+// Begin markdown compilation process, then send result when done...
 const compileAndSendMarkdown = (fileName, res) => buildHTMLFromMarkDown(fileName)
   .then(html => {
     res.writeHead(200);
@@ -409,6 +327,7 @@ const compileAndSendMarkdown = (fileName, res) => buildHTMLFromMarkDown(fileName
     .reset().write('\n');
   });
 
+//setup list object for initial directory index listing
 const compileAndSendDirectoryListing = (fileName, res) => {
   const urls = fs.readdirSync(fileName);
   let list = '<ul>\n';
@@ -431,25 +350,28 @@ const compileAndSendDirectoryListing = (fileName, res) => {
 
   list += '</ul>\n';
 
+//setup template literal for initial directory listing
   buildStyleSheet(cssPath).then(css => {
-    const html = `
-      <!DOCTYPE html>
-        <head>
-          <title>${fileName.slice(2)}</title>
-          <meta charset="utf-8">
-          <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
-          <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.10.0/highlight.min.js"></script>
-          <link rel="stylesheet" href="//highlightjs.org/static/demo/styles/github-gist.css">
-          <link rel="shortcut icon" type="image/x-icon" href="https://cdn0.iconfinder.com/data/icons/octicons/1024/markdown-128.png" />
-          <style>${css}</style>
-        </head>
-        <body>
-          <article class="markdown-body">
-            <h1>Index of ${fileName.slice(2)}</h1>${list}
-            <sup><hr> Served by <a href="https://www.npmjs.com/package/markserv">MarkServ</a> | PID: ${process.pid}</sup>
-          </article>
-        </body>
-        <script src="http://localhost:35729/livereload.js?snipver=1"></script>`;
+    const html = `<!DOCTYPE html>
+<head>
+  <title>${fileName.slice(2)}</title>
+  <meta charset="utf-8">
+  <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.10.0/highlight.min.js"></script>
+  <link rel="stylesheet" href="//highlightjs.org/static/demo/styles/github-gist.css">
+  <link rel="shortcut icon" type="image/x-icon" href="https://cdn0.iconfinder.com/data/icons/octicons/1024/markdown-128.png" />
+  <style>
+${css}
+  </style>
+</head>
+<body>
+  <article class="markdown-body">
+    <h1>Index of ${fileName.slice(2)}</h1>
+    ${list}
+    <sup><hr> Served by <a href="https://www.npmjs.com/package/markserv">MarkServ</a> | PID: ${process.pid}</sup>
+  </article>
+</body>
+<script src="http://localhost:35729/livereload.js?snipver=1"></script>`;
 
     // Log if verbose
 
