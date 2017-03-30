@@ -43,6 +43,7 @@ const Promise = require('bluebird');
 const connect = require('connect');
 
 var frontMatter = '';
+var fileName;
 
 const md = require('markdown-it')({ 
   html: true,
@@ -52,11 +53,12 @@ const md = require('markdown-it')({
 .use(require('markdown-it-front-matter'), function(fm) {
   frontMatter = fm;
 })
+.use(require('markdown-it-anchor'))
 .use(require('markdown-it-sub'))
 .use(require('markdown-it-sup'))
 .use(require('markdown-it-footnote'))
 .use(require('markdown-it-deflist'))
-.use(require('markdown-it-mathjax')());
+.use(require('markdown-it-katex'));
 
 const less = require('less');
 const send = require('send');
@@ -71,12 +73,7 @@ const cursor = ansi(process.stdout);
 
 const pkg = require('./package.json');
 
-var pdf = require('html-pdf');
-var options = JSON.parse(fs.readFileSync('./config.json'));
-options.base = 'file://' + process.cwd() + '/';
 const yaml = require('js-yaml');
-
-console.log(options)
 
 // Path Variables
 const GitHubStyle = path.join(__dirname, 'less/github.less');
@@ -120,6 +117,37 @@ const errormsg = type => cursor
   .reset()
   .fg.red()
   .write(' ');
+
+
+// load phantomjs pdf making functionality
+var pdf = require('html-pdf');
+try {
+var options = JSON.parse(fs.readFileSync('./config.json'));
+options.base = 'file://' + process.cwd() + '/';
+} catch (err) {
+  errormsg('warning')
+    .write('config.json not found, making default config for html-pdf: ', err)
+    .reset().write('\n');
+
+  var options = { 
+      "format": "Letter",
+      "border": {
+          "top": "0.5in",
+          "right": "0.5in",
+          "bottom": "0.5in",
+          "left": "0.5in"
+      },
+      "footer": {
+      "height": "0.5",
+      "contents": {
+        "first": " ",
+        "default": "<div style='text-align:right;color:#adadad;font-size:0.875em'>{{page}}/{{pages}}</div>"
+      }
+    },
+    "base": 'file://' + process.cwd() + '/'
+  };
+};
+
 
 // hasMarkdownExtension: check whether a file is Markdown type
 const hasMarkdownExtension = fileName => {
@@ -198,7 +226,7 @@ const linkify = body => new Promise((resolve, reject) => {
 });
 
 // buildHTMLFromMarkDown: compiles the final HTML/CSS output from Markdown/Less files, includes JS
-const buildHTMLFromMarkDown = markdownPath => new Promise(resolve => {
+const buildHTMLFromMarkDown = (markdownPath, query) => new Promise(resolve => {
   const stack = [
     buildStyleSheet(cssPath),
 
@@ -229,10 +257,32 @@ const buildHTMLFromMarkDown = markdownPath => new Promise(resolve => {
     const dirs = markdownPath.split('/');
     
     var metadata = yaml.load(frontMatter);
-    console.log(metadata);
-    if (!metadata.title) {
-      metadata.title = dirs[dirs.length - 1].split('.md')[0];
+    if (metadata) {
+      console.log(metadata);
+    } else {
+      var metadata = {
+        title: dirs[dirs.length - 1].split('.md')[0]
+      };
     };
+
+
+
+if (query === 'pdf') {
+  var dropMenuhtml = '';
+} else {
+    var dropMenu = {
+      pdf: fileName.slice(2) + '?pdf'
+};
+    var dropMenuhtml = `<div class="btn-group">
+  <button type="button" id="dropmenubutton" class="btn btn-xs btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+  <span class="glyphicon glyphicon-menu-hamburger"></span>
+  </button>
+  <ul class="dropdown-menu" id="dropmenu" role="menu" >
+    <li><a href="${dropMenu.pdf}"><span class="glyphicon glyphicon-print"></span> pdf</a></li>
+    <li role="separator" class="divider"></li>
+  </ul>
+</div>`
+};
 
     let header;
     let footer;
@@ -252,19 +302,19 @@ const buildHTMLFromMarkDown = markdownPath => new Promise(resolve => {
     }
 
 //setup stylesheet block
-    if (flags.less === GitHubStyle) {
-      var cssBlock = `<style>
+if (flags.less === GitHubStyle) {
+var cssBlock = `<style>
 ${css}
   </style>
   <link rel="stylesheet" href="//sindresorhus.com/github-markdown-css/github-markdown.css">`;
-    } else {
+} else {
       var cssBlock = `<style>
 ${css}
   </style>`;
-    };
+};
 
 //setup html and document body
-    outputHtml = `<!DOCTYPE html>
+outputHtml = `<!DOCTYPE html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -274,34 +324,89 @@ ${css}
   <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.10.0/highlight.min.js"></script>
   <link rel="stylesheet" href="https://highlightjs.org/static/demo/styles/github-gist.css">
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.7.1/katex.min.css">
   ${cssBlock}
+
+<!--
   <script type="text/x-mathjax-config">
   MathJax.Hub.Config({
-    tex2jax: {inlineMath: [['$','$']]}
+    tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}
   });
   </script>
   <script type="text/javascript" async
     src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
   </script>
+-->
+
+  <script>
+    function buildMenu() {
+      var n = document.getElementById("dropmenu");
+      var x = n.children;
+      if ( x.length < 3 ) {
+        var list = document.querySelectorAll("h1, h2, h3, h4");
+          list.forEach(item => {
+          var currLev = item.tagName.toLowerCase();
+          var node = document.createElement("li");
+          var ref = document.createElement("a");
+          ref.setAttribute("href","#" + item.id);
+          if (currLev === 'h1') {
+            var innerText = item.textContent;
+          } else if (currLev === 'h2') {
+            var innerText = "\xA0\xA0" + item.textContent;
+          } else if (currLev === 'h3') {
+            var innerText = "\xA0\xA0\xA0\xA0" + item.textContent;
+          } else {
+            var innerText = "\xA0\xA0\xA0\xA0\xA0\xA0" + item.textContent;
+          };
+          var textnode = document.createTextNode(innerText);
+          ref.appendChild(textnode);
+          node.appendChild(ref);
+          document.getElementById("dropmenu").appendChild(node);
+        });
+      };
+      document.addEventListener('keydown', onDocumentKeyDown, false);
+    };
+  
+    function onDocumentKeyDown(event) {
+        switch(event.which){
+            case 77:
+                  $('#dropmenubutton').dropdown('toggle');
+                  event.preventDefault();
+            break;
+
+            case 27:
+                $('#dropmenubutton').dropdown('toggle');
+                event.preventDefault();
+            break;
+        };  
+    };
+
+    window.onload = buildMenu;
+  </script>
+
+
 </head>
 <body>
+  ${dropMenuhtml}
   <article class="markdown-body">
 ${htmlBody}
   </article>
 </body>
 <script src="http://localhost:35729/livereload.js?snipver=1"></script>
 <script>hljs.initHighlightingOnLoad();</script>`;
-    resolve(outputHtml);
+
+resolve(outputHtml);
   });
 });
 
 // Create pdf file and save locally on server...
-const printPDF = (fileName, res, query) => buildHTMLFromMarkDown(fileName)
+const printPDF = (fileName, res, query) => buildHTMLFromMarkDown(fileName, query)
   .then(html => {
     res.writeHead(200);
     res.end(html)
 
-    console.log('Rendering pdf now...')    
+    console.log('Rendering pdf...')    
     var outFile = path.parse(fileName).name;
     pdf.create(html, options).toFile(outFile + '.pdf', function(err, res) {
       if (err) return console.log(err);
@@ -315,7 +420,7 @@ const printPDF = (fileName, res, query) => buildHTMLFromMarkDown(fileName)
   });
 
 // Begin markdown compilation process, then send result when done...
-const compileAndSendMarkdown = (fileName, res) => buildHTMLFromMarkDown(fileName)
+const compileAndSendMarkdown = (fileName, res, query) => buildHTMLFromMarkDown(fileName, query)
   .then(html => {
     res.writeHead(200);
     res.end(html);
@@ -351,8 +456,8 @@ const compileAndSendDirectoryListing = (fileName, res) => {
   list += '</ul>\n';
 
 //setup template literal for initial directory listing
-  buildStyleSheet(cssPath).then(css => {
-    const html = `<!DOCTYPE html>
+buildStyleSheet(cssPath).then(css => {
+const html = `<!DOCTYPE html>
 <head>
   <title>${fileName.slice(2)}</title>
   <meta charset="utf-8">
@@ -407,7 +512,7 @@ const httpRequestHandler = (req, res) => {
      .reset().write('\n');
   }
 
-  const fileName = decodeURI(dir) + decodeURI(originalUrl);
+  fileName = decodeURI(dir) + decodeURI(originalUrl);
 
   let stat;
   let isDir;
@@ -433,7 +538,7 @@ const httpRequestHandler = (req, res) => {
     printPDF(fileName, res, query);
   } else if (isMarkdown) {
     msg('markdown').write(fileName.slice(2)).reset().write('\n');
-    compileAndSendMarkdown(fileName, res);
+    compileAndSendMarkdown(fileName, res, query);
   } else if (isDir) {
     // Index: Browser is requesting a Directory Index
     msg('dir').write(fileName.slice(2)).reset().write('\n');
