@@ -30,8 +30,7 @@ const watchExtensions = markdownExtensions.concat([
 ]);
 
 const PORT_RANGE = {
-  HTTP: [8000, 8100],
-  LIVE_RELOAD: [35729, 35829]
+  HTTP: [8000, 8100]
 };
 
 const http = require('http');
@@ -41,6 +40,27 @@ const fs = require('fs');
 const open = require('open');
 const Promise = require('bluebird');
 const connect = require('connect');
+
+const micromatch = require('micromatch')
+const watch = require('./watch')
+const sync = require('./sync')
+
+var config = {
+    MarkconfDefaults: {
+        watch: {
+            ignore: [
+            'node_modules',
+            '.git',
+            '.svn',
+            '.hg',
+            'tmp'
+            ]
+        }
+    }
+}
+
+config.MarkconfDir = root
+const watcher = watch(config)
 
 var frontMatter = '';
 var fileName;
@@ -64,9 +84,9 @@ const less = require('less');
 const send = require('send');
 const jsdom = require('jsdom');
 const flags = require('commander');
-const liveReload = require('livereload');
+// const liveReload = require('livereload');
 const openPort = require('openport');
-const connectLiveReload = require('connect-livereload');
+// const connectLiveReload = require('connect-livereload');
 const ansi = require('ansi');
 
 const cursor = ansi(process.stdout);
@@ -392,8 +412,9 @@ outputHtml = `<!DOCTYPE html>
   <article class="markdown-body">
 ${htmlBody}
   </article>
+
 </body>
-<script src="http://localhost:35729/livereload.js?snipver=1"></script>
+
 <script>hljs.initHighlightingOnLoad();</script>`;
 
 resolve(outputHtml);
@@ -458,6 +479,7 @@ const compileAndSendDirectoryListing = (fileName, res) => {
 //setup template literal for initial directory listing
 buildStyleSheet(cssPath).then(css => {
 const html = `<!DOCTYPE html>
+<html>
 <head>
   <title>${fileName.slice(2)}</title>
   <meta charset="utf-8">
@@ -476,7 +498,7 @@ ${css}
     <sup><hr> Served by <a href="https://www.npmjs.com/package/markserv">MarkServ</a> | PID: ${process.pid}</sup>
   </article>
 </body>
-<script src="http://localhost:35729/livereload.js?snipver=1"></script>`;
+</html>`;
 
     // Log if verbose
 
@@ -550,8 +572,6 @@ const httpRequestHandler = (req, res) => {
   }
 };
 
-let LIVE_RELOAD_PORT;
-let LIVE_RELOAD_SERVER;
 let HTTP_PORT;
 let HTTP_SERVER;
 let CONNECT_APP;
@@ -570,10 +590,6 @@ const findOpenPort = range => new Promise((resolve, reject) => {
   });
 });
 
-const setLiveReloadPort = port => new Promise(resolve => {
-  LIVE_RELOAD_PORT = port;
-  resolve(port);
-});
 
 const setHTTPPort = port => new Promise(resolve => {
   HTTP_PORT = port;
@@ -582,10 +598,7 @@ const setHTTPPort = port => new Promise(resolve => {
 
 const startConnectApp = () => new Promise(resolve => {
   CONNECT_APP = connect()
-    .use('/', httpRequestHandler)
-    .use(connectLiveReload({
-      port: LIVE_RELOAD_PORT
-    }));
+    .use('/', httpRequestHandler);
   resolve(CONNECT_APP);
 });
 
@@ -596,12 +609,61 @@ const startHTTPServer = () => new Promise(resolve => {
 });
 
 const startLiveReloadServer = () => new Promise(resolve => {
-  LIVE_RELOAD_SERVER = liveReload.createServer({
-    exts: watchExtensions,
-    port: LIVE_RELOAD_PORT
-  }).watch(flags.dir);
+  var root = process.cwd()
 
-  resolve(LIVE_RELOAD_SERVER);
+  //logLevel: info, debug, silent
+  var syncConfig = {
+      logPrefix: 'Browsersync',
+      port: HTTP_PORT,
+      proxy: 'localhost:' + HTTP_PORT,
+      open: false,
+      logLevel: 'info',
+      notify: false
+  }
+
+  sync.start(syncConfig)
+
+
+  var files = [
+      '**/*.txt',
+      '**/*.text',
+      '**/*.md',
+      '**/*.html'
+  ]
+
+  const watchList = []
+
+  const addToWatchList = file => {
+      watchList.push(file)
+  }
+
+  if (files) {
+      files.forEach(filePattern => {
+          addToWatchList(path.join(root, filePattern))
+      })
+  }
+
+  const handleChanges = (changedFile, changeType) => {
+      const shortPattern = path.relative(root, changedFile)
+      const changed = micromatch(changedFile, watchList).length > 0
+
+      console.log(changedFile)
+      console.log(shortPattern)
+      console.log(changed)
+
+      if (changed) {
+          // log.info(`Watch: found ${log.hl('files')} rule ${log.hl(shortPattern)} for: ${log.hl(changeType)} ${log.ul(changedFile)}`)
+          sync.reload(changedFile)
+      } else {
+          // log.trace(`Watch: found no rule for: ${log.hl(changeType)} ${log.ul(changedFile)}`)
+          console.log('Watch: found no rule')
+      }
+  }
+
+  var watchDirs = []
+  watchDirs.push(root)
+  watcher.create(watchDirs, handleChanges)
+  resolve(syncConfig)
 });
 
 const serversActivated = () => {
@@ -624,11 +686,6 @@ const serversActivated = () => {
    .fg.white().write(flags.less).reset()
    .write('\n');
 
-  msg('livereload')
-    .write('communicating on port: ')
-    .fg.white().write(String(LIVE_RELOAD_PORT)).reset()
-    .write('\n');
-
   if (process.pid) {
     msg('process')
       .write('your pid is: ')
@@ -650,10 +707,9 @@ const serversActivated = () => {
   }
 };
 
+
 // Initialize MarkServ
-findOpenPort(PORT_RANGE.LIVE_RELOAD)
-  .then(setLiveReloadPort)
-  .then(startConnectApp)
+startConnectApp()
   .then(() => {
     if (flags.port === null) {
       return findOpenPort(PORT_RANGE.HTTP);
