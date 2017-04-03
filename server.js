@@ -42,8 +42,8 @@ const Promise = require('bluebird');
 const connect = require('connect');
 
 const micromatch = require('micromatch')
-const watch = require('./watch')
-const sync = require('./sync')
+const watch = require('./lib/watch')
+const sync = require('./lib/sync')
 
 var config = {
     MarkconfDefaults: {
@@ -84,9 +84,7 @@ const less = require('less');
 const send = require('send');
 const jsdom = require('jsdom');
 const flags = require('commander');
-// const liveReload = require('livereload');
 const openPort = require('openport');
-// const connectLiveReload = require('connect-livereload');
 const ansi = require('ansi');
 
 const cursor = ansi(process.stdout);
