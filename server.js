@@ -41,11 +41,11 @@ const open = require('open');
 const Promise = require('bluebird');
 const connect = require('connect');
 
-const micromatch = require('micromatch')
-const watch = require('./lib/watch')
-const sync = require('./lib/sync')
+const micromatch = require('micromatch');
+const watch = require('./lib/watch');
+const sync = require('./lib/sync');
 
-var config = {
+const config = {
     MarkconfDefaults: {
         watch: {
             ignore: [
@@ -57,10 +57,10 @@ var config = {
             ]
         }
     }
-}
+};
 
-config.MarkconfDir = root
-const watcher = watch(config)
+config.MarkconfDir = process.cwd();
+const watcher = watch(config);
 
 var frontMatter = '';
 var fileName;
@@ -138,7 +138,7 @@ const errormsg = type => cursor
 
 
 // load phantomjs pdf making functionality
-var pdf = require('html-pdf');
+const pdf = require('html-pdf');
 try {
 var options = JSON.parse(fs.readFileSync('./config.json'));
 options.base = 'file://' + process.cwd() + '/';
@@ -277,6 +277,9 @@ const buildHTMLFromMarkDown = (markdownPath, query) => new Promise(resolve => {
     var metadata = yaml.load(frontMatter);
     if (metadata) {
       console.log(metadata);
+      if (!metadata.title) {
+        metadata.title = dirs[dirs.length - 1].split('.md')[0]
+      };
     } else {
       var metadata = {
         title: dirs[dirs.length - 1].split('.md')[0]
@@ -607,10 +610,10 @@ const startHTTPServer = () => new Promise(resolve => {
 });
 
 const startLiveReloadServer = () => new Promise(resolve => {
-  var root = process.cwd()
+  const rootDir = process.cwd();
 
   //logLevel: info, debug, silent
-  var syncConfig = {
+  const syncConfig = {
       logPrefix: 'Browsersync',
       port: HTTP_PORT,
       proxy: 'localhost:' + HTTP_PORT,
@@ -622,7 +625,7 @@ const startLiveReloadServer = () => new Promise(resolve => {
   sync.start(syncConfig)
 
 
-  var files = [
+  const files = [
       '**/*.txt',
       '**/*.text',
       '**/*.md',
@@ -637,12 +640,12 @@ const startLiveReloadServer = () => new Promise(resolve => {
 
   if (files) {
       files.forEach(filePattern => {
-          addToWatchList(path.join(root, filePattern))
+          addToWatchList(path.join(rootDir, filePattern))
       })
   }
 
   const handleChanges = (changedFile, changeType) => {
-      const shortPattern = path.relative(root, changedFile)
+      const shortPattern = path.relative(rootDir, changedFile)
       const changed = micromatch(changedFile, watchList).length > 0
 
       console.log(changedFile)
@@ -659,7 +662,7 @@ const startLiveReloadServer = () => new Promise(resolve => {
   }
 
   var watchDirs = []
-  watchDirs.push(root)
+  watchDirs.push(rootDir)
   watcher.create(watchDirs, handleChanges)
   resolve(syncConfig)
 });
