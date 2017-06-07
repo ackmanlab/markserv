@@ -1,8 +1,10 @@
 /* config.css requires less.js*/
 /*@import url("https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css");*/
 /*TODO: bootstrap-f44597ba/css/bootstrap.min.css has a parse issue with a missing bracket*/
-@import (less) "css/bootstrap-f44597ba/css/bootstrap.css";
-@import (less) "css/bootstrap-0cee321f/css/bootstrap.min.css" print;
+/*@import (less) "css/bootstrap-f44597ba/css/bootstrap.css";*/
+/*@import (less) "css/bootstrap-0cee321f/css/bootstrap.min.css" print;*/
+@import (less) "https://s3-us-west-2.amazonaws.com/cdn.ackmanlab.com/css/bootstrap-f44597ba/css/bootstrap.css";
+@import (less) "https://s3-us-west-2.amazonaws.com/cdn.ackmanlab.com/css/bootstrap-0cee321f/css/bootstrap.min.css" print;
 
 @font-face {
   font-family: 'Glyphicons Halflings';
@@ -30,17 +32,7 @@ body {
   outline: 1300px solid #fff;
   margin: 16px auto;
   padding: 48px;
-  font-family: Palatino, Georgia, serif;
 }
-
-h1,h2,h3,h4 {
-  font-family: sans-serif;
-}
-
-#dropmenu {font-family: sans-serif;}
-
-/*Config ordered lists to have sufficient indent for two place decimal numbers for reduced indentation*/
-ol { padding-left: 2.0em; }
 
 
 /*body {
@@ -224,7 +216,7 @@ pre code {
   }*/
 
   body {
-      /*text-align: justify;*/
+      text-align: justify;
       text-justify: auto;
       width: 100%;
       border: none;
@@ -323,7 +315,7 @@ pre code {
    {
     color: #333333;
   }
-  h1 {font-size: 18px;}
+  h1 {font-size: 16px;}
 
 .footnotes, .references {text-align: left};
 

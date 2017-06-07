@@ -95,7 +95,7 @@ const yaml = require('js-yaml');
 
 // Path Variables
 const GitHubStyle = path.join(__dirname, 'less/github.less');
-const BootStrapStyle = path.join(__dirname, 'less/bootstrap-custom.css');
+const BootStrapStyle = path.join(__dirname, 'less/bootstrap-custom.less');
 
 // Options
 flags.version(pkg.version)
@@ -113,6 +113,7 @@ flags.version(pkg.version)
 
 const dir = flags.dir;
 const cssPath = flags.less;
+console.log(cssPath)
 
 // Terminal Output Messages
 const msg = type => cursor
@@ -492,7 +493,7 @@ const html = `<!DOCTYPE html>
   <meta charset="utf-8">
   <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.10.0/highlight.min.js"></script>
-  <link rel="stylesheet" href="//highlightjs.org/static/demo/styles/github-gist.css">
+  <link rel="stylesheet" href="https://highlightjs.org/static/demo/styles/github-gist.css">
   <link rel="shortcut icon" type="image/x-icon" href="https://cdn0.iconfinder.com/data/icons/octicons/1024/markdown-128.png" />
   <style>
 ${css}
