@@ -95,6 +95,7 @@ const yaml = require('js-yaml');
 
 // Path Variables
 const GitHubStyle = path.join(__dirname, 'less/github.less');
+const BootStrapStyle = path.join(__dirname, 'less/bootstrap-custom.css');
 
 // Options
 flags.version(pkg.version)
@@ -104,7 +105,7 @@ flags.version(pkg.version)
   .option('-r, --footer [type]', 'Footer .md file', null)
   .option('-n, --navigation [type]', 'Navigation .md file', null)
   .option('-a, --address [type]', 'Serve on ip/address [address]', 'localhost')
-  .option('-s, --less [type]', 'Path to Less styles [less]', GitHubStyle)
+  .option('-s, --less [type]', 'Path to Less styles [less]', BootStrapStyle)
   .option('-f, --file [type]', 'Open specific file in browser [file]')
   .option('-x, --x', 'Don\'t open browser on run.')
   .option('-v, --verbose', 'verbose output')
@@ -140,7 +141,7 @@ const errormsg = type => cursor
 // load phantomjs pdf making functionality
 const pdf = require('html-pdf');
 try {
-var options = JSON.parse(fs.readFileSync('./config.json'));
+var options = JSON.parse(fs.readFileSync('./css/pdf-config.json'));
 options.base = 'file://' + process.cwd() + '/';
 } catch (err) {
   errormsg('warning')
@@ -274,7 +275,12 @@ const buildHTMLFromMarkDown = (markdownPath, query) => new Promise(resolve => {
     const htmlBody = data[1];
     const dirs = markdownPath.split('/');
     
-    var metadata = yaml.load(frontMatter);
+    try {
+      var metadata = yaml.safeLoad(frontMatter);
+    } catch (e) {
+      errormsg(e);
+    }
+
     if (metadata) {
       console.log(metadata);
       if (!metadata.title) {
@@ -298,6 +304,7 @@ if (query === 'pdf') {
   <button type="button" id="dropmenubutton" class="btn btn-xs btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
   <span class="glyphicon glyphicon-menu-hamburger"></span>
   </button>
+
   <ul class="dropdown-menu" id="dropmenu" role="menu" >
     <li><a href="${dropMenu.pdf}"><span class="glyphicon glyphicon-print"></span> pdf</a></li>
     <li role="separator" class="divider"></li>
@@ -363,8 +370,7 @@ outputHtml = `<!DOCTYPE html>
   <script>
     function buildMenu() {
       var n = document.getElementById("dropmenu");
-      var x = n.children;
-      if ( x.length < 3 ) {
+      if ( n != null && n.children.length > 0 && n.children.length < 3 ) {
         var list = document.querySelectorAll("h1, h2, h3, h4");
           list.forEach(item => {
           var currLev = item.tagName.toLowerCase();
