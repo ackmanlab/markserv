@@ -38,7 +38,6 @@ const path = require('path');
 const fs = require('fs');
 
 const open = require('open');
-const Promise = require('bluebird');
 const connect = require('connect');
 
 const micromatch = require('micromatch');
@@ -50,10 +49,11 @@ const config = {
         watch: {
             ignore: [
             'node_modules',
-            '.git',
+            '.git*',
             '.svn',
             '.hg',
-            'tmp'
+            'tmp',
+            '.DS_Store'
             ]
         }
     }
@@ -142,7 +142,7 @@ const errormsg = type => cursor
 // load phantomjs pdf making functionality
 const pdf = require('html-pdf');
 try {
-var options = JSON.parse(fs.readFileSync('./css/pdf-config.json'));
+var options = JSON.parse(fs.readFileSync('./css/pdf-config-cover.json'));
 options.base = 'file://' + process.cwd() + '/';
 } catch (err) {
   errormsg('warning')
@@ -245,6 +245,8 @@ const linkify = body => new Promise((resolve, reject) => {
   });
 });
 
+
+// ---begin main build function---
 // buildHTMLFromMarkDown: compiles the final HTML/CSS output from Markdown/Less files, includes JS
 const buildHTMLFromMarkDown = (markdownPath, query) => new Promise(resolve => {
   const stack = [
@@ -302,7 +304,7 @@ if (query === 'pdf') {
       pdf: fileName.slice(2) + '?pdf'
 };
     var dropMenuhtml = `<div class="btn-group">
-  <button type="button" id="dropmenubutton" class="btn btn-xs btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+  <button type="button" onclick="menuToggle()" id="dropmenubutton" class="btn btn-xs btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
   <span class="glyphicon glyphicon-menu-hamburger"></span>
   </button>
 
@@ -344,17 +346,19 @@ ${css}
 
 //setup html and document body
 outputHtml = `<!DOCTYPE html>
+<html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${metadata.title}</title>
   <meta name="description" content="${metadata.tags}">
   <meta name="author" content="${metadata.author}">
-  <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.10.0/highlight.min.js"></script>
-  <link rel="stylesheet" href="https://highlightjs.org/static/demo/styles/github-gist.css">
-  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.7.1/katex.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.7.1/katex.min.css" async>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github-gist.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/languages/matlab.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/languages/r.min.js"></script>
+
   ${cssBlock}
 
 <!--
@@ -370,44 +374,54 @@ outputHtml = `<!DOCTYPE html>
 
   <script>
     function buildMenu() {
-      var n = document.getElementById("dropmenu");
-      if ( n != null && n.children.length > 0 && n.children.length < 3 ) {
-        var list = document.querySelectorAll("h1, h2, h3, h4");
+      const menuDiv = document.getElementById("dropmenu");
+      if ( menuDiv != null && menuDiv.children.length > 0 && menuDiv.children.length < 3 ) {
+        const list = document.querySelectorAll("h1, h2, h3, h4");
+        let innerText = '';
           list.forEach(item => {
-          var currLev = item.tagName.toLowerCase();
-          var node = document.createElement("li");
-          var ref = document.createElement("a");
+          const currLev = item.tagName.toLowerCase();
+          const node = document.createElement("li");
+          const ref = document.createElement("a");
           ref.setAttribute("href","#" + item.id);
           if (currLev === 'h1') {
-            var innerText = item.textContent;
+            innerText = item.textContent;
           } else if (currLev === 'h2') {
-            var innerText = "\xA0\xA0" + item.textContent;
+            innerText = "\xA0\xA0" + item.textContent;
           } else if (currLev === 'h3') {
-            var innerText = "\xA0\xA0\xA0\xA0" + item.textContent;
+            innerText = "\xA0\xA0\xA0\xA0" + item.textContent;
           } else {
-            var innerText = "\xA0\xA0\xA0\xA0\xA0\xA0" + item.textContent;
+            innerText = "\xA0\xA0\xA0\xA0\xA0\xA0" + item.textContent;
           };
-          var textnode = document.createTextNode(innerText);
+          const textnode = document.createTextNode(innerText);
           ref.appendChild(textnode);
           node.appendChild(ref);
           document.getElementById("dropmenu").appendChild(node);
         });
+        menuDiv.addEventListener('click', menuToggle, false);
       };
       document.addEventListener('keydown', onDocumentKeyDown, false);
     };
   
     function onDocumentKeyDown(event) {
-        switch(event.which){
-            case 77:
-                  $('#dropmenubutton').dropdown('toggle');
-                  event.preventDefault();
-            break;
+      switch(event.which){
+        case 77:
+          menuToggle();
+          event.preventDefault();
+        break;
 
-            case 27:
-                $('#dropmenubutton').dropdown('toggle');
-                event.preventDefault();
-            break;
-        };  
+        case 27:
+          menuToggle();
+          event.preventDefault();
+        break;
+      };  
+    };
+
+    function menuToggle() {
+      const menuDiv = document.getElementById("dropmenu");
+      menuDiv.classList.toggle('show');
+      if (!menuDiv.classList.contains("show")) {
+          document.getElementById("dropmenubutton").blur();
+      };
     };
 
     window.onload = buildMenu;
@@ -423,11 +437,16 @@ ${htmlBody}
 
 </body>
 
-<script>hljs.initHighlightingOnLoad();</script>`;
+<script>hljs.initHighlightingOnLoad();</script>
+</html>`;
 
 resolve(outputHtml);
   });
 });
+// ---end main build---
+
+
+
 
 // Create pdf file and save locally on server...
 const printPDF = (fileName, res, query) => buildHTMLFromMarkDown(fileName, query)
@@ -491,9 +510,11 @@ const html = `<!DOCTYPE html>
 <head>
   <title>${fileName.slice(2)}</title>
   <meta charset="utf-8">
-  <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.10.0/highlight.min.js"></script>
-  <link rel="stylesheet" href="https://highlightjs.org/static/demo/styles/github-gist.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.7.1/katex.min.css" async>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github-gist.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/languages/matlab.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/languages/r.min.js"></script>
   <link rel="shortcut icon" type="image/x-icon" href="https://cdn0.iconfinder.com/data/icons/octicons/1024/markdown-128.png" />
   <style>
 ${css}
@@ -526,15 +547,11 @@ const getPathFromUrl = url => {
   return url.split(/[?#]/)[0];
 };
 
-// Get URL params from file being fetched
-const getQueryFromUrl = url => {
-  return url.split(/[?]/)[1];
-};
 
 // http_request_handler: handles all the browser requests
 const httpRequestHandler = (req, res) => {
   const originalUrl = getPathFromUrl(req.originalUrl);
-  const query = getQueryFromUrl(req.originalUrl);
+  const query = req.originalUrl.split(/[?]/)[1];
 
   if (flags.verbose) {
     msg('request')
@@ -581,7 +598,6 @@ const httpRequestHandler = (req, res) => {
 };
 
 let HTTP_PORT;
-let HTTP_SERVER;
 let CONNECT_APP;
 
 const findOpenPort = range => new Promise((resolve, reject) => {
@@ -599,10 +615,11 @@ const findOpenPort = range => new Promise((resolve, reject) => {
 });
 
 
-const setHTTPPort = port => new Promise(resolve => {
-  HTTP_PORT = port;
-  resolve(port);
-});
+
+
+
+// --------------------------------------------------------------------------
+// ---define the connect app promise and its four primary promise children---
 
 const startConnectApp = () => new Promise(resolve => {
   CONNECT_APP = connect()
@@ -610,11 +627,19 @@ const startConnectApp = () => new Promise(resolve => {
   resolve(CONNECT_APP);
 });
 
+
+const setHTTPPort = port => new Promise(resolve => {
+  HTTP_PORT = port;
+  resolve(port);
+});
+
+
 const startHTTPServer = () => new Promise(resolve => {
-  HTTP_SERVER = http.createServer(CONNECT_APP);
+  const HTTP_SERVER = http.createServer(CONNECT_APP);
   HTTP_SERVER.listen(HTTP_PORT, flags.address);
   resolve(HTTP_SERVER);
 });
+
 
 const startLiveReloadServer = () => new Promise(resolve => {
   const rootDir = process.cwd();
@@ -641,13 +666,9 @@ const startLiveReloadServer = () => new Promise(resolve => {
 
   const watchList = []
 
-  const addToWatchList = file => {
-      watchList.push(file)
-  }
-
   if (files) {
       files.forEach(filePattern => {
-          addToWatchList(path.join(rootDir, filePattern))
+          watchList.push(path.join(rootDir, filePattern))
       })
   }
 
@@ -673,6 +694,7 @@ const startLiveReloadServer = () => new Promise(resolve => {
   watcher.create(watchDirs, handleChanges)
   resolve(syncConfig)
 });
+
 
 const serversActivated = () => {
   const serveURL = 'http://' + flags.address + ':' + HTTP_PORT;
@@ -716,7 +738,7 @@ const serversActivated = () => {
 };
 
 
-// Initialize MarkServ
+// Initialize MarkServ connect app
 startConnectApp()
   .then(() => {
     if (flags.port === null) {
