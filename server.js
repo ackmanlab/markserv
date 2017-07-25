@@ -48,7 +48,7 @@ const config = {
     watch: {
       ignore: [
       'node_modules',
-      '.git',
+      '.git*',
       '.svn',
       '.hg',
       'tmp',
@@ -62,7 +62,6 @@ config.MarkconfDir = process.cwd()
 const watcher = watch(config)
 
 var frontMatter = ''
-var fileName
 
 const md = require('markdown-it')({ 
   html: true,
@@ -247,12 +246,12 @@ const linkify = body => new Promise((resolve, reject) => {
 
 // ---begin main build function---
 // buildHTMLFromMarkDown: compiles the final HTML/CSS output from Markdown/Less files, includes JS
-const buildHTMLFromMarkDown = (markdownPath, query) => new Promise(resolve => {
+const buildHTMLFromMarkDown = (fileName, query) => new Promise(resolve => {
   const stack = [
     buildStyleSheet(cssPath),
 
     // Article
-    getFile(markdownPath)
+    getFile(fileName)
       .then(markdownToHTML)
       .then(linkify),
 
@@ -275,7 +274,7 @@ const buildHTMLFromMarkDown = (markdownPath, query) => new Promise(resolve => {
   Promise.all(stack).then(data => {
     const css = data[0]
     const htmlBody = data[1]
-    const dirs = markdownPath.split('/')
+    const dirs = fileName.split('/')
     
     try {
       var metadata = yaml.safeLoad(frontMatter)
@@ -294,25 +293,27 @@ const buildHTMLFromMarkDown = (markdownPath, query) => new Promise(resolve => {
       }
     }
 
+    if (query === 'pdf') {
+      var dropMenuhtml = ''
+    } else {
+      var dropMenu = {
+        pdf: fileName.slice(2) + '?pdf'
+      }
+      var dropMenuhtml = (
 
-// block left for template literal spacing
-if (query === 'pdf') {
-  var dropMenuhtml = ''
-} else {
-    var dropMenu = {
-      pdf: fileName.slice(2) + '?pdf'
-    }
-    var dropMenuhtml = `<div class="btn-group">
+// <-- template literal block
+`<div class="btn-group">
   <button type="button" onclick="menuToggle()" id="dropmenubutton" class="btn btn-xs btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-  <span class="glyphicon glyphicon-menu-hamburger"></span>
+    <span class="glyphicon glyphicon-menu-hamburger"></span>
   </button>
 
   <ul class="dropdown-menu" id="dropmenu" role="menu" >
     <li><a href="${dropMenu.pdf}"><span class="glyphicon glyphicon-print"></span> pdf</a></li>
     <li role="separator" class="divider"></li>
   </ul>
-</div>`
-}
+</div>`)
+
+    }
 
     let header
     let footer
@@ -331,20 +332,31 @@ if (query === 'pdf') {
       navigation = data[4]
     }
 
-//setup stylesheet block
-if (flags.less === GitHubStyle) {
-var cssBlock = `<style>
-${css}
-  </style>
-  <link rel="stylesheet" href="//sindresorhus.com/github-markdown-css/github-markdown.css">`
-} else {
-      var cssBlock = `<style>
-${css}
-  </style>`
-}
+    //setup stylesheet
+    if (flags.less === GitHubStyle) {
+      var cssBlock = (
 
-//setup html and document body
-outputHtml = `<!DOCTYPE html>
+// <-- template literal block
+`<style>
+  ${css}
+</style>
+<link rel="stylesheet" href="//sindresorhus.com/github-markdown-css/github-markdown.css">`)
+
+    } else {
+      var cssBlock = (
+
+// <-- template literal block
+`<style>
+  ${css}
+</style>`)
+
+    }
+
+    //setup html and document body
+    outputHtml = (
+
+// <-- template literal block
+`<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
@@ -367,23 +379,23 @@ outputHtml = `<!DOCTYPE html>
         const list = document.querySelectorAll("h1, h2, h3, h4")
         let innerText = ''
         list.forEach(item => {
-        const currLev = item.tagName.toLowerCase()
-        const node = document.createElement("li")
-        const ref = document.createElement("a")
-        ref.setAttribute("href","#" + item.id)
-        if (currLev === 'h1') {
-          innerText = item.textContent
-        } else if (currLev === 'h2') {
-          innerText = "\xA0\xA0" + item.textContent
-        } else if (currLev === 'h3') {
-          innerText = "\xA0\xA0\xA0\xA0" + item.textContent
-        } else {
-          innerText = "\xA0\xA0\xA0\xA0\xA0\xA0" + item.textContent
-        }
-        const textnode = document.createTextNode(innerText)
-        ref.appendChild(textnode)
-        node.appendChild(ref)
-        document.getElementById("dropmenu").appendChild(node)
+          const currLev = item.tagName.toLowerCase()
+          const node = document.createElement("li")
+          const ref = document.createElement("a")
+          ref.setAttribute("href","#" + item.id)
+          if (currLev === 'h1') {
+            innerText = item.textContent
+          } else if (currLev === 'h2') {
+            innerText = "\xA0\xA0" + item.textContent
+          } else if (currLev === 'h3') {
+            innerText = "\xA0\xA0\xA0\xA0" + item.textContent
+          } else {
+            innerText = "\xA0\xA0\xA0\xA0\xA0\xA0" + item.textContent
+          }
+          const textnode = document.createTextNode(innerText)
+          ref.appendChild(textnode)
+          node.appendChild(ref)
+          document.getElementById("dropmenu").appendChild(node)
         })
         menuDiv.addEventListener('click', menuToggle, false)
       }
@@ -415,21 +427,19 @@ outputHtml = `<!DOCTYPE html>
     window.onload = buildMenu
   </script>
 
-
 </head>
 <body>
   ${dropMenuhtml}
   <article class="markdown-body">
-${htmlBody}
+  ${htmlBody}
   </article>
-
 </body>
-
 <script>hljs.initHighlightingOnLoad()</script>
-</html>`
+</html>`)
 
-resolve(outputHtml)
+    resolve(outputHtml)
   })
+  .catch (err => { console.log(err) })
 })
 // ---end main build---
 
@@ -443,13 +453,13 @@ const printPDF = (fileName, res, query) => buildHTMLFromMarkDown(fileName, query
     res.end(html)
 
     console.log('Rendering pdf...')    
-    var outFile = path.parse(fileName).name
-    pdf.create(html, options).toFile(outFile + '.pdf', function(err, res) {
+    const outFile = path.parse(fileName).name
+    pdf.create(html, options).toFile( outFile + '.pdf', (err, res) => {
       if (err) return console.log(err)
       console.log(res)
     })
-  // Catch if something breaks...
-  }).catch(err => {
+  })
+  .catch (err => {
     msg('error')
     .write('Can\'t build HTML: ', err)
     .reset().write('\n')
@@ -460,9 +470,8 @@ const compileAndSendMarkdown = (fileName, res, query) => buildHTMLFromMarkDown(f
   .then(html => {
     res.writeHead(200)
     res.end(html)
-
-  // Catch if something breaks...
-  }).catch(err => {
+  })
+  .catch (err => {
     msg('error')
     .write('Can\'t build HTML: ', err)
     .reset().write('\n')
@@ -471,29 +480,30 @@ const compileAndSendMarkdown = (fileName, res, query) => buildHTMLFromMarkDown(f
 //setup list object for initial directory index listing
 const compileAndSendDirectoryListing = (fileName, res) => {
   const urls = fs.readdirSync(fileName)
-  let list = '<ul>\n'
+  let list = '\n    <ul>\n'
 
   urls.forEach(subPath => {
     const dir = fs.statSync(fileName + subPath).isDirectory()
     let href
     if (dir) {
       href = subPath + '/'
-      list += `\t<li class="dir"><a href="${href}">${href}</a></li> \n`
+      list += `    <li class="dir"><a href="${href}">${href}</a></li> \n`
     } else {
       href = subPath
       if (subPath.split('.md')[1] === '') {
-        list += `\t<li class="md"><a href="${href}">${href}</a></li> \n`
+        list += `    <li class="md"><a href="${href}">${href}</a></li> \n`
       } else {
-        list += `\t<li class="file"><a href="${href}">${href}</a></li> \n`
+        list += `    <li class="file"><a href="${href}">${href}</a></li> \n`
       }
     }
   })
+  list += '    </ul>\n'
 
-  list += '</ul>\n'
+  //setup template literal for initial directory listing
+  buildStyleSheet(cssPath).then( css => {
+    const html = (
 
-//setup template literal for initial directory listing
-buildStyleSheet(cssPath).then(css => {
-const html = `<!DOCTYPE html>
+`<!DOCTYPE html>
 <html>
 <head>
   <title>${fileName.slice(2)}</title>
@@ -517,8 +527,9 @@ ${css}
 </body>
 </html>`
 
-    // Log if verbose
+    )
 
+    // Log if verbose
     if (flags.verbose) {
       msg('index').write(fileName).reset().write('\n')
     }
@@ -547,7 +558,7 @@ const httpRequestHandler = (req, res) => {
      .reset().write('\n')
   }
 
-  fileName = decodeURI(dir) + decodeURI(originalUrl)
+  const  fileName = decodeURI(dir) + decodeURI(originalUrl)
 
   let stat
   let isDir
@@ -605,7 +616,6 @@ const findOpenPort = range => new Promise((resolve, reject) => {
 
 
 
-
 // ---define the connect app promise and its four primary promise children---
 const startConnectApp = () => new Promise(resolve => {
   CONNECT_APP = connect()
@@ -632,50 +642,49 @@ const startLiveReloadServer = () => new Promise(resolve => {
 
   //logLevel: info, debug, silent
   const syncConfig = {
-      logPrefix: 'Browsersync',
-      port: HTTP_PORT,
-      proxy: 'localhost:' + HTTP_PORT,
-      open: false,
-      logLevel: 'info',
-      notify: false
+    logPrefix: 'Browsersync',
+    port: HTTP_PORT,
+    proxy: 'localhost:' + HTTP_PORT,
+    open: false,
+    logLevel: 'info',
+    notify: false
   }
 
   sync.start(syncConfig)
 
-
   const files = [
-      '**/*.txt',
-      '**/*.text',
-      '**/*.md',
-      '**/*.html'
+    '**/*.txt',
+    '**/*.text',
+    '**/*.md',
+    '**/*.html'
   ]
 
   const watchList = []
 
   if (files) {
-      files.forEach(filePattern => {
-          watchList.push(path.join(rootDir, filePattern))
-      })
+    files.forEach(filePattern => {
+        watchList.push(path.join(rootDir, filePattern))
+    })
   }
 
   const handleChanges = (changedFile, changeType) => {
-      const shortPattern = path.relative(rootDir, changedFile)
-      const changed = micromatch(changedFile, watchList).length > 0
+    const shortPattern = path.relative(rootDir, changedFile)
+    const changed = micromatch(changedFile, watchList).length > 0
 
-      console.log(changedFile)
-      console.log(shortPattern)
-      console.log(changed)
+    console.log(changedFile)
+    console.log(shortPattern)
+    console.log(changed)
 
-      if (changed) {
-          // log.info(`Watch: found ${log.hl('files')} rule ${log.hl(shortPattern)} for: ${log.hl(changeType)} ${log.ul(changedFile)}`)
-          sync.reload(changedFile)
-      } else {
-          // log.trace(`Watch: found no rule for: ${log.hl(changeType)} ${log.ul(changedFile)}`)
-          console.log('Watch: found no rule')
-      }
+    if (changed) {
+      // log.info(`Watch: found ${log.hl('files')} rule ${log.hl(shortPattern)} for: ${log.hl(changeType)} ${log.ul(changedFile)}`)
+      sync.reload(changedFile)
+    } else {
+      // log.trace(`Watch: found no rule for: ${log.hl(changeType)} ${log.ul(changedFile)}`)
+      console.log('Watch: found no rule')
+    }
   }
 
-  var watchDirs = []
+  const watchDirs = []
   watchDirs.push(rootDir)
   watcher.create(watchDirs, handleChanges)
   resolve(syncConfig)
@@ -736,3 +745,4 @@ startConnectApp()
   .then(startHTTPServer)
   .then(startLiveReloadServer)
   .then(serversActivated)
+  .catch (err => { console.log(err) })
