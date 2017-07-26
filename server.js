@@ -61,15 +61,11 @@ const config = {
 config.MarkconfDir = process.cwd()
 const watcher = watch(config)
 
-var frontMatter = ''
-
+const fm = require('front-matter')
 const md = require('markdown-it')({ 
   html: true,
   linkify: true,
   typographer: false
-})
-.use(require('markdown-it-front-matter'), function(fm) {
-  frontMatter = fm
 })
 .use(require('markdown-it-anchor'))
 .use(require('markdown-it-sub'))
@@ -77,6 +73,51 @@ const md = require('markdown-it')({
 .use(require('markdown-it-footnote'))
 .use(require('markdown-it-deflist'))
 .use(require('markdown-it-katex'))
+
+function setMetadata (page, options) {
+  // Check for metadata key:value presence and make defaults if needed
+  if (!page['categories']) {page.categories = 'pub'}
+  if (!page['layout']) {page.layout = 'post'}
+  if (!page['url']) {page.url = '/'+page.file}
+  if (!page['title']) {page.title = ''}
+  if (!page['author']) {page.author = ''}
+
+  // Check metadata date obj and make default if needed (parsed from filename or current date)
+  if (!page['date'] && !page.file.match(/[0-9]{4}-[0-9]{2}-[0-9]{2}[-_]/,'')) {
+    page.date = new Date()
+  } else if (!page['date']) {
+    page.date = new Date(page.file.substr(0,10))
+  }
+
+  return page
+}
+
+function mdparse (data, file, options='') {
+  try {
+    //parse dataObj yaml header and content into dataObj.attributes and dataObj.body
+    const dataParse = fm(data)
+    const page = {}
+    page.file = path.parse(file).name + '.html'
+    page.content = md.render(dataParse.body)
+
+    // Hoist metadata attributes from front-matter() to parent level of page object
+    Object.keys(dataParse.attributes).forEach(key => {
+      return (page[key] = dataParse.attributes[key])
+    })
+    
+    return setMetadata(page, options)
+
+  } catch (err) {
+    console.log(`Warning: ${err.name} file: ${file}\n  ${err.reason}, continuing with entire file...\n`)
+
+    const page = {}
+    page.file = path.parse(file).name + '.html'
+    page.content = md.render(data)
+    
+    return setMetadata(page, options)
+  }
+
+}
 
 const less = require('less')
 const send = require('send')
@@ -88,8 +129,6 @@ const ansi = require('ansi')
 const cursor = ansi(process.stdout)
 
 const pkg = require('./package.json')
-
-const yaml = require('js-yaml')
 
 // Path Variables
 const GitHubStyle = path.join(__dirname, 'less/github.less')
@@ -202,13 +241,13 @@ const buildStyleSheet = (cssPath) =>
   )
 
 // markdownToHTML: turns a Markdown file into HTML content
-const markdownToHTML = (markdownText) => new Promise(resolve => {
-  resolve(md.render(markdownText))
+const markdownToHTML = (data, fileName) => new Promise(resolve => {
+  resolve(mdparse(data, fileName))
 })
 
 // linkify: converts github style wiki markdown links to .md links
-const linkify = body => new Promise((resolve, reject) => {  
-  jsdom.env(body, (err, window) => {
+const linkify = (page) => new Promise((resolve, reject) => {  
+  jsdom.env(page.content, (err, window) => {
     if (err) {
       return reject(err)
     }
@@ -237,9 +276,9 @@ const linkify = body => new Promise((resolve, reject) => {
       }
     }
 
-    const html = window.document.getElementsByTagName('body')[0].innerHTML
+    page.content = window.document.getElementsByTagName('body')[0].innerHTML
 
-    resolve(html)
+    resolve(page)
   })
 })
 
@@ -252,54 +291,47 @@ const buildHTMLFromMarkDown = (fileName, query) => new Promise(resolve => {
 
     // Article
     getFile(fileName)
-      .then(markdownToHTML)
+      .then(data => { return markdownToHTML(data, fileName) })
       .then(linkify),
 
     // Header
     flags.header && getFile(flags.header)
-      .then(markdownToHTML)
+      .then(data => { return markdownToHTML(data, fileName) })
       .then(linkify),
 
     // Footer
     flags.footer && getFile(flags.footer)
-      .then(markdownToHTML)
+      .then(data => { return markdownToHTML(data, fileName) })
       .then(linkify),
 
     // Navigation
     flags.navigation && getFile(flags.navigation)
-      .then(markdownToHTML)
+      .then(data => { return markdownToHTML(data, fileName) })
       .then(linkify)
   ]
 
-  Promise.all(stack).then(data => {
-    const css = data[0]
-    const htmlBody = data[1]
+  Promise.all(stack).then(dataArr => {
+    const css = dataArr[0]
+    // console.log(dataArr[1])
+    const page = dataArr[1]
     const dirs = fileName.split('/')
     
-    try {
-      var metadata = yaml.safeLoad(frontMatter)
-    } catch (e) {
-      errormsg(e)
-    }
+    console.log(
 
-    if (metadata) {
-      console.log(metadata)
-      if (!metadata.title) {
-        metadata.title = dirs[dirs.length - 1].split('.md')[0]
-      }
-    } else {
-      var metadata = {
-        title: dirs[dirs.length - 1].split('.md')[0]
-      }
-    }
+`title: ${page.title}
+url: ${page.url}
+tags: ${page.tags}
+date: ${page.date}
+author: ${page.author}`)
 
+    let dropMenuhtml
     if (query === 'pdf') {
-      var dropMenuhtml = ''
+      dropMenuhtml = ''
     } else {
-      var dropMenu = {
+      const dropMenu = {
         pdf: fileName.slice(2) + '?pdf'
       }
-      var dropMenuhtml = (
+      dropMenuhtml = (
 
 // <-- template literal block
 `<div class="btn-group">
@@ -321,15 +353,15 @@ const buildHTMLFromMarkDown = (fileName, query) => new Promise(resolve => {
     let outputHtml
 
     if (flags.header) {
-      header = data[2]
+      header = dataArr[2]
     }
 
     if (flags.footer) {
-      footer = data[3]
+      footer = dataArr[3]
     }
 
     if (flags.navigation) {
-      navigation = data[4]
+      navigation = dataArr[4]
     }
 
     //setup stylesheet
@@ -361,9 +393,9 @@ const buildHTMLFromMarkDown = (fileName, query) => new Promise(resolve => {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${metadata.title}</title>
-  <meta name="description" content="${metadata.tags}">
-  <meta name="author" content="${metadata.author}">
+  <title>${page.title}</title>
+  <meta name="description" content="${page.tags}">
+  <meta name="author" content="${page.author}">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.7.1/katex.min.css" async>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github-gist.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
@@ -431,7 +463,7 @@ const buildHTMLFromMarkDown = (fileName, query) => new Promise(resolve => {
 <body>
   ${dropMenuhtml}
   <article class="markdown-body">
-  ${htmlBody}
+  ${page.content}
   </article>
 </body>
 <script>hljs.initHighlightingOnLoad()</script>
